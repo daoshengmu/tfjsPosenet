@@ -1,0 +1,17 @@
+{
+  "name": "tfjsPosenet",
+  "displayName": "tfjsPosenet",
+  "expo": {
+    "name": "tfjsPosenet",
+    "slug": "tfjsPosenet",
+    "version": "1.0.0",
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
+    "assetBundlePatterns": [
+      "**/*"
+    ]
+  }
+}
