@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@react-native-community/async-storage": "^1.10.3",
+    "@tensorflow-models/posenet": "^2.2.1",
     "@tensorflow/tfjs": "^1.7.4",
     "@tensorflow/tfjs-react-native": "^0.2.3",
     "async-storage": "^0.1.0",
