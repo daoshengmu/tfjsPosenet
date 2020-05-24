@@ -5,25 +5,34 @@ import * as posenet from '@tensorflow-models/posenet';
 import React from 'react';
 import * as RNFS from 'react-native-fs';
 import * as jpeg from 'jpeg-js';
-import * as FileSystem from 'expo-file-system'
+import * as FileSystem from 'expo-file-system';
+import * as Permissions from 'expo-permissions';
 import { GLView } from 'expo-gl';
+import { Camera } from 'expo-camera';
 import { setCanvasSize, contextCreate, renderPoints } from './src/gl.js';
 
 import {
   StyleSheet,
   View,
-  Image
+  Image,
+  Text,
+  TouchableOpacity
 } from 'react-native';
 
 class App extends React.Component {
+
   constructor(props) {
     super(props);
     this.state = {
       isTfReady: false,
       isPosenetLoaded: false,
       net: null,
-      points: null
+      points: null,
+      hasCameraPermission: false,
+      cameraType: Camera.Constants.Type.front,
     };
+
+    this.camera = null;
   }
 
   async componentDidMount() {
@@ -51,6 +60,11 @@ class App extends React.Component {
       console.log("posenet loaded");
       this.loadImage();
     }
+
+    const { status } = await Permissions.askAsync(Permissions.CAMERA);
+    this.setState({
+      hasCameraPermission: status === 'granted'
+    });
   }
 
   async loadImage() {
@@ -86,22 +100,53 @@ class App extends React.Component {
         points.push(0.0);
       });
 
-      this.setState({points: points});
+     // this.setState({points: points}); // TODO: Move to this.points.
     }
 
     console.log("posenet done checking.");
   }
 
+  setCamera(camera) {
+    this.camera = (camera);
+  }
+
   render() {
+    //const hasCameraPermission = this.state.hasCameraPermission;
 
     renderPoints(this.state.points);
 
     return (
-      <View stype={styles.MainContainer}>
-        <Image source={require("./asset/dog.jpg")}></Image>
-        <GLView style={styles.GLContainer}
+      <View stype={styles.cameraContainer}>
+        {/* <Image source={require("./asset/dog.jpg")}></Image> */}
+        <Camera
+          style={styles.camera}
+          type={this.state.cameraType}
+          ref={ref => { this.setCamera(ref) }}>
+            <View style={{
+                flex: 1,
+                backgroundColor: 'transparent',
+                flexDirection: 'row',
+              }}>
+              <TouchableOpacity
+                style={{
+                  flex: 0.1,
+                  alignSelf: 'flex-end',
+                  alignItems: 'center',
+                }}
+                onPress={() => {
+                  setType(
+                    type === Camera.Constants.Type.back
+                      ? Camera.Constants.Type.front
+                      : Camera.Constants.Type.back
+                  );
+                }}>
+                <Text style={{ fontSize: 18, marginBottom: 10, color: 'white' }}> Flip </Text>
+              </TouchableOpacity>
+            </View>
+        </Camera>
+        {/* <GLView style={styles.GLContainer}
           onContextCreate={contextCreate}
-        />
+        /> */}
       </View>
     );
   }
@@ -121,6 +166,26 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     left: 0,
+  },
+  cameraContainer: {
+    flex: 1,
+    // display: 'flex',
+    // justifyContent: 'center',
+    // alignItems: 'center',
+    // width: '10%',
+    // height: '10%',
+    // backgroundColor: '#fff',
+  },
+  camera : {
+    flex: 1,
+    // display: 'flex',
+    // width: '92%',
+    // height: '64%',
+    // backgroundColor: '#f0F',
+    // zIndex: 1,
+    // borderWidth: 20,
+    // borderRadius: 40,
+    // borderColor: '#f0f',
   }
 })
 

@@ -1,5 +1,3 @@
-import { GLView } from 'expo';
-import { State } from 'react-native-gesture-handler';
 
 var vertCode =
 'attribute vec3 coordinates;' +
