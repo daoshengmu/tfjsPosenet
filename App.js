@@ -6,6 +6,7 @@ import React from 'react';
 import * as RNFS from 'react-native-fs';
 import * as jpeg from 'jpeg-js';
 import * as FileSystem from 'expo-file-system';
+import { FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Permissions from 'expo-permissions';
 import { GLView } from 'expo-gl';
 import { Camera } from 'expo-camera';
@@ -110,18 +111,16 @@ class App extends React.Component {
     console.log("posenet done checking.");
   }
 
-  // setCameraType(type) {
-  //   //this.cameraType = type;
-  //   this.setState({cameraType: type});
-  // }
-
   takePicture = async () => {
     const { hasCameraPermission } = this.state;
     console.log("takePicture.");
-
     if (hasCameraPermission && this.camera) {
       console.log("takePicture with camera.");
+      // `takePictureAsync()` will cause Android emulator crash.
       let photo = await this.camera.takePictureAsync();
+      if (!photo) {
+        return;
+      }
       console.log("photo url: " + photo.uri);
 
       const resize = 0.1;
@@ -213,13 +212,50 @@ class App extends React.Component {
         <View style={{ flex: 1 }}>
           <View style={{ flex: 1 }}>
             <Camera style={styles.camera} type={this.state.cameraType} ref={ref => { this.camera = ref;}}>
+              <GLView style={styles.GLContainer} pointerEvents="none"
+              onContextCreate={contextCreate}
+              />
+              <View style={{flex:1, flexDirection:"row",justifyContent:"space-between",margin:20}}>
+                <TouchableOpacity
+                  style={{
+                    alignSelf: 'flex-end',
+                    alignItems: 'center',
+                    backgroundColor: 'transparent',
+                  }}
+                  onPress={(ref) => {
+                    this.takePicture();
+                  }}>
+                  <FontAwesome
+                      name="camera"
+                      style={{ color: "#fff", fontSize: 40}}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{
+                    alignSelf: 'flex-end',
+                    alignItems: 'center',
+                    backgroundColor: 'transparent',
+                  }}
+                  onPress={(ref) => {
+                    console.log("MaterialCommunityIcons pressed.");
+                    const type = this.state.cameraType === Camera.Constants.Type.back
+                      ? Camera.Constants. Type.front
+                      : Camera.Constants.Type.back;
+                    this.setState({cameraType: type});
+                  }}>
+                  <MaterialCommunityIcons
+                    name="camera-switch"
+                    style={{ color: "#fff", fontSize: 40}}
+                  />
+                </TouchableOpacity>
+              </View>
             </Camera>
               {/* {this.setState({needForceRender: true})} */}
-            <GLView style={styles.GLContainer}
+            {/* <GLView style={styles.GLContainer}
             onContextCreate={contextCreate}
-            />
+            /> */}
           </View>
-          <View style={{ flex: 1, flexDirection: 'row' }}>
+          {/* <View style={{ flex: 1, flexDirection: 'row' }}>
             <TouchableOpacity
               style={{
                 flex: 0.1,
@@ -249,7 +285,7 @@ class App extends React.Component {
               }}>
               <Text style={{ fontSize: 24, color: 'black' }}> Take a Photo </Text>
             </TouchableOpacity>
-           </View>
+           </View> */}
         </View>
       );
     }
@@ -305,6 +341,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     left: 0,
+    // flex: 1
   },
   cameraContainer: {
     flex: 1,

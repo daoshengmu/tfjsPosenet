@@ -108,6 +108,7 @@ export async function contextCreate(gl) {
   
   console.log("GL context initialized.");
   _state.initialized = true;
+ // renderPoints();
 }
 
 export async function renderPoints(points) {
@@ -119,7 +120,7 @@ export async function renderPoints(points) {
 
   console.log("renderPoints." + gl.drawingBufferWidth + ", " + gl.drawingBufferHeight);
 
-  var vertices = [
+  let vertices = [
     -0.5, 0.5, 0.0,
     0.25, 0.5, 0.0,
     -0.0, -0.8, 0.0,
