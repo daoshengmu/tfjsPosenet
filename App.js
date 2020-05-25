@@ -14,6 +14,7 @@ import * as ImageManipulator from "expo-image-manipulator";
 import { setCanvasSize, contextCreate, renderPoints } from './src/gl.js';
 
 import {
+  ActivityIndicator,
   StyleSheet,
   View,
  // Image,
@@ -28,15 +29,15 @@ class App extends React.Component {
     this.state = {
       isTfReady: false,
       isPosenetLoaded: false,
+      isActivated: false,
       net: null,
       cameraType: Camera.Constants.Type.front,
-      hasCameraPermission: false,
-      needForceRender: false // Chaning a 
+      hasCameraPermission: false
     };
 
     this.camera = null;
     //this.cameraType = Camera.Constants.Type.front;
-    this.frameCount = 0;
+
    // this.points = null;
   }
 
@@ -181,17 +182,19 @@ class App extends React.Component {
         points.push(((image.height - position.y) / image.height) * 2.0 - 1.0);
         points.push(0.0);
       });
-     // this.setState({points: points}); // TODO: Move to this.points.
-      // this.points = points;
 
       renderPoints(points);
       this.forceUpdate();
     }
   }
 
-  render() {
-    const { hasCameraPermission } = this.state;
+  setActivate = async (activate) => {
+   this.setState({isActivated: activate});
+  }
 
+  render() {
+    const { hasCameraPermission, isActivated, isTfReady, isPosenetLoaded } = this.state;
+    const goingToActivate = hasCameraPermission && isPosenetLoaded && isTfReady;
      //++this.frameCount;
       //  (this.forceUpdate());
     // react native only state changes could call render(),
@@ -205,56 +208,91 @@ class App extends React.Component {
 
     if (hasCameraPermission === null) {
       return <View />;
-    } else if (hasCameraPermission === false) {
-      return <Text>No access to camera</Text>;
+    } else if (isActivated === false) {
+      // return <Text>No access to camera</Text>;
+      return (
+        <View style={styles.mainContainer}>
+          <Text style={styles.title}>React Native PoseNet</Text>
+          <Text style={styles.title}>@daoshengmu</Text>
+          <View style={{marginTop: 30}}>
+            <View style={styles.loadingModelContainer}>
+              <Text style={styles.text}>Camera ready?</Text>
+              {hasCameraPermission ? (
+                  <Text>🚀</Text>
+                ) : (
+                  <ActivityIndicator size='small'/>
+                )}
+            </View>
+            <View style={styles.loadingModelContainer}>
+              <Text style={styles.text}>TensorFlow ready?</Text>
+              {isTfReady ? (
+                  <Text>🚀</Text>
+                ) : (
+                  <ActivityIndicator size='small'/>
+                )}
+            </View>
+            <View style={styles.loadingModelContainer}>
+              <Text style={styles.text}>Posenet ready?</Text>
+              {isPosenetLoaded ? (
+                  <Text>🚀</Text>
+                ) : (
+                  <ActivityIndicator size='small'/>
+                )}
+            </View>
+          </View>
+            <TouchableOpacity style={styles.dashBox} onPress={goingToActivate ? this.setActivate : undefined}>
+              {goingToActivate && (
+                <Text style={styles.text}>Tap to start</Text>
+              )}
+            </TouchableOpacity>
+        </View>
+      );
     } else {
       return (
         <View style={{ flex: 1 }}>
-          <View style={{ flex: 1 }}>
-            <Camera style={styles.camera} type={this.state.cameraType} ref={ref => { this.camera = ref;}}>
-              <GLView style={styles.GLContainer} pointerEvents="none"
+          <Camera style={styles.camera} type={this.state.cameraType} ref={ref => { this.camera = ref;}}>
+            <GLView style={styles.GLContainer} pointerEvents="none"
               onContextCreate={contextCreate}
-              />
-              <View style={{flex:1, flexDirection:"row",justifyContent:"space-between",margin:20}}>
-                <TouchableOpacity
-                  style={{
-                    alignSelf: 'flex-end',
-                    alignItems: 'center',
-                    backgroundColor: 'transparent',
-                  }}
-                  onPress={(ref) => {
-                    this.takePicture();
-                  }}>
-                  <FontAwesome
-                      name="camera"
-                      style={{ color: "#fff", fontSize: 40}}
-                  />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={{
-                    alignSelf: 'flex-end',
-                    alignItems: 'center',
-                    backgroundColor: 'transparent',
-                  }}
-                  onPress={(ref) => {
-                    console.log("MaterialCommunityIcons pressed.");
-                    const type = this.state.cameraType === Camera.Constants.Type.back
-                      ? Camera.Constants. Type.front
-                      : Camera.Constants.Type.back;
-                    this.setState({cameraType: type});
-                  }}>
-                  <MaterialCommunityIcons
-                    name="camera-switch"
+            />
+            <View style={{flex:1, flexDirection:"row",justifyContent:"space-between",margin:20}}>
+              <TouchableOpacity
+                style={{
+                  alignSelf: 'flex-end',
+                  alignItems: 'center',
+                  backgroundColor: 'transparent',
+                }}
+                onPress={(ref) => {
+                  this.takePicture();
+                }}>
+                <FontAwesome
+                    name="camera"
                     style={{ color: "#fff", fontSize: 40}}
-                  />
-                </TouchableOpacity>
-              </View>
-            </Camera>
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  alignSelf: 'flex-end',
+                  alignItems: 'center',
+                  backgroundColor: 'transparent',
+                }}
+                onPress={(ref) => {
+                  console.log("MaterialCommunityIcons pressed.");
+                  const type = this.state.cameraType === Camera.Constants.Type.back
+                    ? Camera.Constants. Type.front
+                    : Camera.Constants.Type.back;
+                  this.setState({cameraType: type});
+                }}>
+                <MaterialCommunityIcons
+                  name="camera-switch"
+                  style={{ color: "#fff", fontSize: 40}}
+                />
+              </TouchableOpacity>
+            </View>
+          </Camera>
               {/* {this.setState({needForceRender: true})} */}
             {/* <GLView style={styles.GLContainer}
             onContextCreate={contextCreate}
             /> */}
-          </View>
           {/* <View style={{ flex: 1, flexDirection: 'row' }}>
             <TouchableOpacity
               style={{
@@ -328,12 +366,15 @@ class App extends React.Component {
 }
 
 const styles = StyleSheet.create({
-  MainContainer: {
-   width: 300,
-   height: 300,
-   position: 'absolute',
-   top: 0,
-   left: 0,
+  loadingModelContainer: {
+    flexDirection: 'row',
+    marginTop: 10
+  },
+  mainContainer: {
+    marginTop: 30,
+    flex: 1,
+    backgroundColor: 'white',
+    alignItems: 'center'
   },
   GLContainer: {
     width: '100%',
@@ -341,28 +382,37 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     left: 0,
-    // flex: 1
   },
   cameraContainer: {
     flex: 1,
-    // display: 'flex',
-    // justifyContent: 'center',
-    // alignItems: 'center',
-    // width: '10%',
-    // height: '10%',
-    // backgroundColor: '#fff',
   },
   camera : {
     flex: 1,
-    // display: 'flex',
-    // width: '92%',
-    // height: '64%',
-    // backgroundColor: '#f0F',
-    // zIndex: 1,
-    // borderWidth: 20,
-    // borderRadius: 40,
-    // borderColor: '#f0f',
-  }
+  },
+  title: {
+    color: '#000000',
+    fontSize: 24,
+    textAlign: 'center'
+  },
+  text: {
+    color: '#888888',
+    fontSize: 16,
+    textAlign: 'center'
+  },
+  dashBox: {
+    width: 280,
+    height: 280,
+    padding: 10,
+    borderColor: '#7866bf',
+    borderWidth: 5,
+    borderStyle: 'dashed',
+    borderRadius: 1,
+    marginTop: 40,
+    marginBottom: 10,
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
 })
 
 export default App;
