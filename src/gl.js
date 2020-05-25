@@ -98,7 +98,15 @@ export async function contextCreate(gl) {
   // Enable the attribute
   gl.enableVertexAttribArray(coord);
 
-  console.log("initialized.");
+  // Disable the depth test
+  gl.disable(gl.DEPTH_TEST)
+
+  // Clear the canvas
+  gl.clearColor(0.0, 0.0, 0.0, 0.0);
+  // Set the view port
+  gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+  
+  console.log("GL context initialized.");
   _state.initialized = true;
 }
 
@@ -107,26 +115,9 @@ export async function renderPoints(points) {
     return;
   }
 
-  // return;
-
   let gl = _state.gl;
 
   console.log("renderPoints." + gl.drawingBufferWidth + ", " + gl.drawingBufferHeight);
-
-  // // Clear the canvas
-  // gl.clearColor(0.5, 0.5, 0.5, 0.9);
-
-  // // Enable the depth test
-  // gl.enable(gl.DEPTH_TEST);
-
-  // // Clear the color buffer bit
-  // gl.clear(gl.COLOR_BUFFER_BIT);
-
-  // // Set the view port
-  // gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
-
-  // // Bind vertex buffer object
-  // gl.bindBuffer(gl.ARRAY_BUFFER, _state.vertexbuffer);
 
   var vertices = [
     -0.5, 0.5, 0.0,
@@ -157,23 +148,15 @@ export async function renderPoints(points) {
   // Enable the attribute
   gl.enableVertexAttribArray(coord);
 
-  /*============= Drawing the primitive ===============*/
-
-  // Clear the canvas
-  gl.clearColor(0.0, 0.0, 0.0, 0.0);
-
-  // Enable the depth test
-  gl.enable(gl.DEPTH_TEST);
+  /*============= Drawing the primitive ===============*/;
 
   // Clear the color buffer bit
-  gl.clear(gl.COLOR_BUFFER_BIT);
-
-  // Set the view port
-  gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   // Draw the triangle
   gl.drawArrays(gl.POINTS, 0, (vertices.length / 3));
 
-  //gl.flush(); // need?
+  gl.flush(); // need?
+  console.log("Render points done.");
   gl.endFrameEXP();
 }

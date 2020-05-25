@@ -17,6 +17,7 @@
     "expo-camera": "^8.2.0",
     "expo-gl": "^8.2.0",
     "expo-gl-cpp": "^8.2.0",
+    "expo-image-manipulator": "^8.1.0",
     "expo-splash-screen": "^0.2.3",
     "expo-updates": "~0.2.0",
     "react": "~16.9.0",

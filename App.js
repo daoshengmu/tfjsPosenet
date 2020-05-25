@@ -9,12 +9,13 @@ import * as FileSystem from 'expo-file-system';
 import * as Permissions from 'expo-permissions';
 import { GLView } from 'expo-gl';
 import { Camera } from 'expo-camera';
+import * as ImageManipulator from "expo-image-manipulator";
 import { setCanvasSize, contextCreate, renderPoints } from './src/gl.js';
 
 import {
   StyleSheet,
   View,
-  Image,
+ // Image,
   Text,
   TouchableOpacity
 } from 'react-native';
@@ -27,12 +28,15 @@ class App extends React.Component {
       isTfReady: false,
       isPosenetLoaded: false,
       net: null,
-      points: null,
-      hasCameraPermission: false,
       cameraType: Camera.Constants.Type.front,
+      hasCameraPermission: false,
+      needForceRender: false // Chaning a 
     };
 
     this.camera = null;
+    //this.cameraType = Camera.Constants.Type.front;
+    this.frameCount = 0;
+   // this.points = null;
   }
 
   async componentDidMount() {
@@ -58,7 +62,7 @@ class App extends React.Component {
         net: net,
       });
       console.log("posenet loaded");
-      this.loadImage();
+    //  this.loadImage();
     }
 
     const { status } = await Permissions.askAsync(Permissions.CAMERA);
@@ -75,7 +79,7 @@ class App extends React.Component {
       encoding: FileSystem.EncodingType.Base64,
     });
     const imgBuffer = tf.util.encodeString(imgB64, 'base64').buffer;
-    rawImageData = new Uint8Array(imgBuffer);
+    const rawImageData = new Uint8Array(imgBuffer);
    
     const TO_UINT8ARRAY = true;
     const { width, height, data } = jpeg.decode(rawImageData, TO_UINT8ARRAY);
@@ -106,49 +110,184 @@ class App extends React.Component {
     console.log("posenet done checking.");
   }
 
-  setCamera(camera) {
-    this.camera = (camera);
+  // setCameraType(type) {
+  //   //this.cameraType = type;
+  //   this.setState({cameraType: type});
+  // }
+
+  takePicture = async () => {
+    const { hasCameraPermission } = this.state;
+    console.log("takePicture.");
+
+    if (hasCameraPermission && this.camera) {
+      console.log("takePicture with camera.");
+      let photo = await this.camera.takePictureAsync();
+      console.log("photo url: " + photo.uri);
+
+      const resize = 0.1;
+      const manipResult = await ImageManipulator.manipulateAsync(
+        photo.uri,
+        [{ resize: {width: photo.width * resize, height: photo.height * resize} }],
+        { compress: 0.5, format: ImageManipulator.SaveFormat.JPEG }
+      );
+
+      const imgB64 = await FileSystem.readAsStringAsync(manipResult.uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      const imgBuffer = tf.util.encodeString(imgB64, 'base64').buffer;
+      const rawImageData = new Uint8Array(imgBuffer);
+     
+      const TO_UINT8ARRAY = true;
+      const { width, height, data } = jpeg.decode(rawImageData, TO_UINT8ARRAY);
+      console.log("imageToTensor...width * height" + width, ", " + height);
+      const image = {data: data, width: width, height: height};
+
+      this.getPoseFromPhoto(image);
+    }
+  }
+
+  // render(){
+  //   const { hasCameraPermission } = this.state
+  //   if (hasCameraPermission === null) {
+  //     return <View />;
+  //   } else if (hasCameraPermission === false) {
+  //     return <Text>No access to camera</Text>;
+  //   } else {
+  //     return (
+  //         <View style={{ flex: 1 }}>
+  //           <Camera style={{ flex: 1 }} type={this.state.cameraType}>
+              
+  //           </Camera>
+  //       </View>
+  //     );
+  //   }
+  // }
+
+  // image is a object: {data: data, width: width, height: height}
+  getPoseFromPhoto = async (image) => {
+    let net = this.state.net;
+
+    if (net) {
+      const pose = await net.estimateSinglePose(image, {
+        flipHorizontal: this.state.cameraType === Camera.Constants.Type.front
+      });
+      console.log(pose);
+      //var poseData = JSON.stringify(pose);
+      let keypoints = pose['keypoints'];
+      let points = [];
+      keypoints.forEach(key => {
+        console.log("" + key['part']+": " + key['position'].x + ", " +key['position'].y);
+        let position = key['position'];
+        points.push((position.x / image.width) * 2.0 - 1.0);
+        points.push(((image.height - position.y) / image.height) * 2.0 - 1.0);
+        points.push(0.0);
+      });
+     // this.setState({points: points}); // TODO: Move to this.points.
+      // this.points = points;
+
+      renderPoints(points);
+      this.forceUpdate();
+    }
   }
 
   render() {
-    //const hasCameraPermission = this.state.hasCameraPermission;
+    const { hasCameraPermission } = this.state;
 
-    renderPoints(this.state.points);
+     //++this.frameCount;
+      //  (this.forceUpdate());
+    // react native only state changes could call render(),
+    // An alternative way is calling `this.forceUpdate()`.
+    console.log("render...");
+    // if (hasCameraPermission === true) {
+    //   console.log("ready to capture frames.");
+    //   this.takePicture();
+    // }
+   // renderPoints();
 
-    return (
-      <View stype={styles.cameraContainer}>
-        {/* <Image source={require("./asset/dog.jpg")}></Image> */}
-        <Camera
-          style={styles.camera}
-          type={this.state.cameraType}
-          ref={ref => { this.setCamera(ref) }}>
-            <View style={{
-                flex: 1,
-                backgroundColor: 'transparent',
-                flexDirection: 'row',
+    if (hasCameraPermission === null) {
+      return <View />;
+    } else if (hasCameraPermission === false) {
+      return <Text>No access to camera</Text>;
+    } else {
+      return (
+        <View style={{ flex: 1 }}>
+          <View style={{ flex: 1 }}>
+            <Camera style={styles.camera} type={this.state.cameraType} ref={ref => { this.camera = ref;}}>
+            </Camera>
+              {/* {this.setState({needForceRender: true})} */}
+            <GLView style={styles.GLContainer}
+            onContextCreate={contextCreate}
+            />
+          </View>
+          <View style={{ flex: 1, flexDirection: 'row' }}>
+            <TouchableOpacity
+              style={{
+                flex: 0.1,
+                // left: 0,
+                // marginLeft: 10,
+                // marginTop: 10
+              }}
+              onPress={(ref) => {
+               // this.setCameraType(
+                  const type = this.state.cameraType === Camera.Constants.Type.back
+                    ? Camera.Constants. Type.front
+                    : Camera.Constants.Type.back;
+                  this.setState({cameraType: type});
+              //  );
               }}>
-              <TouchableOpacity
-                style={{
-                  flex: 0.1,
-                  alignSelf: 'flex-end',
-                  alignItems: 'center',
-                }}
-                onPress={() => {
-                  setType(
-                    type === Camera.Constants.Type.back
-                      ? Camera.Constants.Type.front
-                      : Camera.Constants.Type.back
-                  );
-                }}>
-                <Text style={{ fontSize: 18, marginBottom: 10, color: 'white' }}> Flip </Text>
-              </TouchableOpacity>
-            </View>
-        </Camera>
-        {/* <GLView style={styles.GLContainer}
-          onContextCreate={contextCreate}
-        /> */}
-      </View>
-    );
+              <Text style={{ fontSize: 24, color: 'black' }}> Flip </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{
+                flex: 0.1,
+                // left: 0,
+                // marginLeft: 10,
+                // marginTop: 10
+              }}
+              onPress={(ref) => {
+                this.takePicture();
+              }}>
+              <Text style={{ fontSize: 24, color: 'black' }}> Take a Photo </Text>
+            </TouchableOpacity>
+           </View>
+        </View>
+      );
+    }
+
+    // return (
+    //   <View stype={styles.cameraContainer}>
+    //     {/* <Image source={require("./asset/dog.jpg")}></Image> */}
+    //     <Camera
+    //       style={styles.camera}
+    //       type={this.state.cameraType}
+    //       ref={ref => { this.setCamera(ref) }}>
+    //         <View style={{
+    //             flex: 1,
+    //             backgroundColor: 'transparent',
+    //             flexDirection: 'row',
+    //           }}>
+    //           <TouchableOpacity
+    //             style={{
+    //               flex: 0.1,
+    //               alignSelf: 'flex-end',
+    //               alignItems: 'center',
+    //             }}
+    //             onPress={() => {
+    //               setType(
+    //                 type === Camera.Constants.Type.back
+    //                   ? Camera.Constants.Type.front
+    //                   : Camera.Constants.Type.back
+    //               );
+    //             }}>
+    //             <Text style={{ fontSize: 18, marginBottom: 10, color: 'white' }}> Flip </Text>
+    //           </TouchableOpacity>
+    //         </View>
+    //     </Camera>
+    //     {/* <GLView style={styles.GLContainer}
+    //       onContextCreate={contextCreate}
+    //     /> */}
+    //   </View>
+    // );
   }
 }
 
@@ -161,8 +300,8 @@ const styles = StyleSheet.create({
    left: 0,
   },
   GLContainer: {
-    width: 300,
-    height: 300,
+    width: '100%',
+    height: '100%',
     position: 'absolute',
     top: 0,
     left: 0,
