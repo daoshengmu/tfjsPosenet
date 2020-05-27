@@ -3,7 +3,6 @@ import * as tf from '@tensorflow/tfjs';
 import '@tensorflow/tfjs-react-native';
 import * as posenet from '@tensorflow-models/posenet';
 import React from 'react';
-import * as RNFS from 'react-native-fs';
 import * as jpeg from 'jpeg-js';
 import * as FileSystem from 'expo-file-system';
 import { FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -11,13 +10,13 @@ import * as Permissions from 'expo-permissions';
 import { GLView } from 'expo-gl';
 import { Camera } from 'expo-camera';
 import * as ImageManipulator from "expo-image-manipulator";
-import { setCanvasSize, contextCreate, renderPoints } from './src/gl.js';
+import * as ScreenOrientation from 'expo-screen-orientation';
+import { contextCreate, renderPoints } from './src/gl.js';
 
 import {
   ActivityIndicator,
   StyleSheet,
   View,
- // Image,
   Text,
   TouchableOpacity
 } from 'react-native';
@@ -36,12 +35,11 @@ class App extends React.Component {
     };
 
     this.camera = null;
-    //this.cameraType = Camera.Constants.Type.front;
-
-   // this.points = null;
   }
 
   async componentDidMount() {
+    await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT);
+
     // Wait for tf to be ready.
     await tf.ready();
     // Signal to the app that tensorflow.js can now be used.
@@ -63,8 +61,6 @@ class App extends React.Component {
         isPosenetLoaded: true,
         net: net,
       });
-      console.log("posenet loaded");
-    //  this.loadImage();
     }
 
     const { status } = await Permissions.askAsync(Permissions.CAMERA);
@@ -73,62 +69,19 @@ class App extends React.Component {
     });
   }
 
-  async loadImage() {
-    const url = "file://"+RNFS.DocumentDirectoryPath+'/asset/dog.jpg';
-    console.log("image: " +url);
-
-    const imgB64 = await FileSystem.readAsStringAsync(url, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-    const imgBuffer = tf.util.encodeString(imgB64, 'base64').buffer;
-    const rawImageData = new Uint8Array(imgBuffer);
-   
-    const TO_UINT8ARRAY = true;
-    const { width, height, data } = jpeg.decode(rawImageData, TO_UINT8ARRAY);
-    console.log("imageToTensor...width * height" + width, ", " + height);
-    const image = {data: data, width: width, height: height};
-
-    let net = this.state.net;
-
-    if (net) {
-      const pose = await net.estimateSinglePose(image, {
-        flipHorizontal: false
-      });
-      console.log(pose);
-      //var poseData = JSON.stringify(pose);
-      let keypoints = pose['keypoints'];
-      let points = [];
-      keypoints.forEach(key => {
-        console.log(key['position']);
-        let position = key['position'];
-        points.push((position.x / width) * 2.0 - 1.0);
-        points.push((position.y / height) * 2.0 - 1.0);
-        points.push(0.0);
-      });
-
-     // this.setState({points: points}); // TODO: Move to this.points.
-    }
-
-    console.log("posenet done checking.");
-  }
-
   takePicture = async () => {
     const { hasCameraPermission } = this.state;
-    console.log("takePicture.");
     if (hasCameraPermission && this.camera) {
-      console.log("takePicture with camera.");
       // `takePictureAsync()` will cause Android emulator crash.
       let photo = await this.camera.takePictureAsync();
       if (!photo) {
         return;
       }
-      console.log("photo url: " + photo.uri);
-
-      const resize = 0.1;
+      const resize = 0.05;
       const manipResult = await ImageManipulator.manipulateAsync(
         photo.uri,
         [{ resize: {width: photo.width * resize, height: photo.height * resize} }],
-        { compress: 0.5, format: ImageManipulator.SaveFormat.JPEG }
+        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
       );
 
       const imgB64 = await FileSystem.readAsStringAsync(manipResult.uri, {
@@ -139,29 +92,11 @@ class App extends React.Component {
      
       const TO_UINT8ARRAY = true;
       const { width, height, data } = jpeg.decode(rawImageData, TO_UINT8ARRAY);
-      console.log("imageToTensor...width * height" + width, ", " + height);
       const image = {data: data, width: width, height: height};
 
       this.getPoseFromPhoto(image);
     }
   }
-
-  // render(){
-  //   const { hasCameraPermission } = this.state
-  //   if (hasCameraPermission === null) {
-  //     return <View />;
-  //   } else if (hasCameraPermission === false) {
-  //     return <Text>No access to camera</Text>;
-  //   } else {
-  //     return (
-  //         <View style={{ flex: 1 }}>
-  //           <Camera style={{ flex: 1 }} type={this.state.cameraType}>
-              
-  //           </Camera>
-  //       </View>
-  //     );
-  //   }
-  // }
 
   // image is a object: {data: data, width: width, height: height}
   getPoseFromPhoto = async (image) => {
@@ -171,15 +106,16 @@ class App extends React.Component {
       const pose = await net.estimateSinglePose(image, {
         flipHorizontal: this.state.cameraType === Camera.Constants.Type.front
       });
-      console.log(pose);
-      //var poseData = JSON.stringify(pose);
+
+      const imageW = image.width;
+      const imageH = image.height;
       let keypoints = pose['keypoints'];
       let points = [];
       keypoints.forEach(key => {
-        console.log("" + key['part']+": " + key['position'].x + ", " +key['position'].y);
+       // console.log("" + key['part']+": " + key['position'].x + ", " +key['position'].y);
         let position = key['position'];
-        points.push((position.x / image.width) * 2.0 - 1.0);
-        points.push(((image.height - position.y) / image.height) * 2.0 - 1.0);
+        points.push((position.x / imageW) * 2.0 - 1.0);
+        points.push(((imageH - position.y) / imageH) * 2.0 - 1.0);
         points.push(0.0);
       });
 
@@ -195,21 +131,10 @@ class App extends React.Component {
   render() {
     const { hasCameraPermission, isActivated, isTfReady, isPosenetLoaded } = this.state;
     const goingToActivate = hasCameraPermission && isPosenetLoaded && isTfReady;
-     //++this.frameCount;
-      //  (this.forceUpdate());
-    // react native only state changes could call render(),
-    // An alternative way is calling `this.forceUpdate()`.
-    console.log("render...");
-    // if (hasCameraPermission === true) {
-    //   console.log("ready to capture frames.");
-    //   this.takePicture();
-    // }
-   // renderPoints();
 
     if (hasCameraPermission === null) {
       return <View />;
     } else if (isActivated === false) {
-      // return <Text>No access to camera</Text>;
       return (
         <View style={styles.mainContainer}>
           <Text style={styles.title}>React Native PoseNet</Text>
@@ -262,20 +187,6 @@ class App extends React.Component {
                   backgroundColor: 'transparent',
                 }}
                 onPress={(ref) => {
-                  this.takePicture();
-                }}>
-                <FontAwesome
-                    name="camera"
-                    style={{ color: "#fff", fontSize: 40}}
-                />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{
-                  alignSelf: 'flex-end',
-                  alignItems: 'center',
-                  backgroundColor: 'transparent',
-                }}
-                onPress={(ref) => {
                   console.log("MaterialCommunityIcons pressed.");
                   const type = this.state.cameraType === Camera.Constants.Type.back
                     ? Camera.Constants. Type.front
@@ -287,81 +198,25 @@ class App extends React.Component {
                   style={{ color: "#fff", fontSize: 40}}
                 />
               </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  alignSelf: 'flex-end',
+                  alignItems: 'center',
+                  backgroundColor: 'transparent',
+                }}
+                onPress={(ref) => {
+                  this.takePicture();
+                }}>
+                <FontAwesome
+                    name="camera"
+                    style={{ color: "#fff", fontSize: 40}}
+                />
+              </TouchableOpacity>
             </View>
           </Camera>
-              {/* {this.setState({needForceRender: true})} */}
-            {/* <GLView style={styles.GLContainer}
-            onContextCreate={contextCreate}
-            /> */}
-          {/* <View style={{ flex: 1, flexDirection: 'row' }}>
-            <TouchableOpacity
-              style={{
-                flex: 0.1,
-                // left: 0,
-                // marginLeft: 10,
-                // marginTop: 10
-              }}
-              onPress={(ref) => {
-               // this.setCameraType(
-                  const type = this.state.cameraType === Camera.Constants.Type.back
-                    ? Camera.Constants. Type.front
-                    : Camera.Constants.Type.back;
-                  this.setState({cameraType: type});
-              //  );
-              }}>
-              <Text style={{ fontSize: 24, color: 'black' }}> Flip </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={{
-                flex: 0.1,
-                // left: 0,
-                // marginLeft: 10,
-                // marginTop: 10
-              }}
-              onPress={(ref) => {
-                this.takePicture();
-              }}>
-              <Text style={{ fontSize: 24, color: 'black' }}> Take a Photo </Text>
-            </TouchableOpacity>
-           </View> */}
         </View>
       );
     }
-
-    // return (
-    //   <View stype={styles.cameraContainer}>
-    //     {/* <Image source={require("./asset/dog.jpg")}></Image> */}
-    //     <Camera
-    //       style={styles.camera}
-    //       type={this.state.cameraType}
-    //       ref={ref => { this.setCamera(ref) }}>
-    //         <View style={{
-    //             flex: 1,
-    //             backgroundColor: 'transparent',
-    //             flexDirection: 'row',
-    //           }}>
-    //           <TouchableOpacity
-    //             style={{
-    //               flex: 0.1,
-    //               alignSelf: 'flex-end',
-    //               alignItems: 'center',
-    //             }}
-    //             onPress={() => {
-    //               setType(
-    //                 type === Camera.Constants.Type.back
-    //                   ? Camera.Constants.Type.front
-    //                   : Camera.Constants.Type.back
-    //               );
-    //             }}>
-    //             <Text style={{ fontSize: 18, marginBottom: 10, color: 'white' }}> Flip </Text>
-    //           </TouchableOpacity>
-    //         </View>
-    //     </Camera>
-    //     {/* <GLView style={styles.GLContainer}
-    //       onContextCreate={contextCreate}
-    //     /> */}
-    //   </View>
-    // );
   }
 }
 

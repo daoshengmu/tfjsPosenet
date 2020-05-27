@@ -16,15 +16,8 @@ const fragCode = `
 var _state = {
   initialized: false,
   gl: null,
-  width: 300,
-  height: 300,
   vertexbuffer: null,
   program: null,
-}
-
-export function setCanvasSize(width, height) {
-  _state.width = width;
-  _state.height = height;
 }
 
 export async function contextCreate(gl) {
@@ -99,7 +92,8 @@ export async function contextCreate(gl) {
   gl.enableVertexAttribArray(coord);
 
   // Disable the depth test
-  gl.disable(gl.DEPTH_TEST)
+  gl.disable(gl.DEPTH_TEST);
+  gl.depthMask(false);
 
   // Clear the canvas
   gl.clearColor(0.0, 0.0, 0.0, 0.0);
@@ -112,11 +106,11 @@ export async function contextCreate(gl) {
 }
 
 export async function renderPoints(points) {
-  if (!_state.initialized) {
+  let gl = _state.gl;
+
+  if (!_state.initialized || !gl) {
     return;
   }
-
-  let gl = _state.gl;
 
   console.log("renderPoints." + gl.drawingBufferWidth + ", " + gl.drawingBufferHeight);
 
@@ -130,6 +124,7 @@ export async function renderPoints(points) {
     vertices = points;
   }
   console.log("points lens: " + vertices.length);
+  gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
 
   // Use the combined shader program object
   gl.useProgram(_state.shaderProgram);
@@ -152,7 +147,7 @@ export async function renderPoints(points) {
   /*============= Drawing the primitive ===============*/;
 
   // Clear the color buffer bit
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.clear(gl.COLOR_BUFFER_BIT);
 
   // Draw the triangle
   gl.drawArrays(gl.POINTS, 0, (vertices.length / 3));
