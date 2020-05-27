@@ -11,7 +11,7 @@ import { GLView } from 'expo-gl';
 import { Camera } from 'expo-camera';
 import * as ImageManipulator from "expo-image-manipulator";
 import * as ScreenOrientation from 'expo-screen-orientation';
-import { contextCreate, renderPoints } from './src/gl.js';
+import { contextCreate, renderPoints, clearWebGLBuffer } from './src/gl.js';
 
 import {
   ActivityIndicator,
@@ -124,6 +124,10 @@ class App extends React.Component {
     }
   }
 
+  clearGLScreen() {
+    clearWebGLBuffer();
+  }
+
   setActivate = async (activate) => {
    this.setState({isActivated: activate});
   }
@@ -192,6 +196,7 @@ class App extends React.Component {
                     ? Camera.Constants. Type.front
                     : Camera.Constants.Type.back;
                   this.setState({cameraType: type});
+                  this.clearGLScreen();
                 }}>
                 <MaterialCommunityIcons
                   name="camera-switch"

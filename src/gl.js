@@ -95,14 +95,22 @@ export async function contextCreate(gl) {
   gl.disable(gl.DEPTH_TEST);
   gl.depthMask(false);
 
-  // Clear the canvas
   gl.clearColor(0.0, 0.0, 0.0, 0.0);
-  // Set the view port
-  gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
-  
   console.log("GL context initialized.");
   _state.initialized = true;
- // renderPoints();
+}
+
+export async function clearWebGLBuffer() {
+  let gl = _state.gl;
+  if (!_state.initialized || !gl) {
+    return;
+  }
+
+  gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+
+  gl.flush();
+  gl.endFrameEXP();
 }
 
 export async function renderPoints(points) {
@@ -112,8 +120,9 @@ export async function renderPoints(points) {
     return;
   }
 
-  console.log("renderPoints." + gl.drawingBufferWidth + ", " + gl.drawingBufferHeight);
+  console.log("viewport: " + gl.drawingBufferWidth + ", " + gl.drawingBufferHeight);
 
+  // For debugging.
   let vertices = [
     -0.5, 0.5, 0.0,
     0.25, 0.5, 0.0,
@@ -152,7 +161,7 @@ export async function renderPoints(points) {
   // Draw the triangle
   gl.drawArrays(gl.POINTS, 0, (vertices.length / 3));
 
-  gl.flush(); // need?
+  gl.flush();
   console.log("Render points done.");
   gl.endFrameEXP();
 }
