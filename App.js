@@ -47,13 +47,13 @@ class App extends React.Component {
       isTfReady: true,
     });
 
+    // It uses MobileNetV1 by default. (smaller, faster, less accurate)
     // const net = await posenet.load({
     //   architecture: 'MobileNetV1',
     //   outputStride: 16,
     //   inputResolution: { width: 640, height: 480 },
     //   multiplier: 0.75
     // });
-    // It uses MobileNetV1 by default. (smaller, faster, less accurate)
     const net = await posenet.load();
 
     if (net) {
@@ -142,7 +142,6 @@ class App extends React.Component {
       return (
         <View style={styles.mainContainer}>
           <Text style={styles.title}>React Native PoseNet</Text>
-          <Text style={styles.title}>@daoshengmu</Text>
           <View style={{marginTop: 30}}>
             <View style={styles.loadingModelContainer}>
               <Text style={styles.text}>Camera ready?</Text>
@@ -174,6 +173,10 @@ class App extends React.Component {
                 <Text style={styles.text}>Tap to start</Text>
               )}
             </TouchableOpacity>
+            <View style={styles.footerContainer}>
+              <Text style={styles.text}>Powered by TensorFlow.js</Text>
+              <Text style={styles.text}>@daoshengmu</Text>
+            </View>
         </View>
       );
     } else {
@@ -273,6 +276,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center'
   },
+  footerContainer: {
+    marginTop: 30
+  }
 })
 
 export default App;
